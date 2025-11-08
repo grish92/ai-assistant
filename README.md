@@ -74,14 +74,4 @@ streamlit run app/streamlit/streamlit_app.py
 ---
 
 
-echo "# ai-assistant" >> README.md
-git init
-git add -A
-git commit -m "first commit"
-git branch -M main
-git remote add origin https://github.com/grish92/ai-assistant.git
-git push -u origin main
 
-
-
-# ai-assistant
