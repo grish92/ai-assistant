@@ -1,0 +1,110 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: ai-assistant
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+      - LANGFUSE_HOST=http://langfuse-server:3005
+    volumes:
+      - .:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - qdrant
+      - langfuse-server
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: ai-assistant-streamlit
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+      - WS_URL=ws://app:8000
+      - BASE_HTTP_URL=http://app:8000
+      - LANGFUSE_HOST=http://langfuse-server:3005
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: streamlit run app/streamlit/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
+    depends_on:
+      - app
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: test-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+      QDRANT__SERVICE__HTTP_PORT: 6333
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  langfuse-server:
+    image: langfuse/langfuse:2.93.0
+    container_name: langfuse-news-server
+    depends_on:
+      langfuse-db-ai:
+        condition: service_healthy
+    ports:
+      - "3005:3005"
+    environment:
+      - PORT=3005
+      - TELEMETRY_ENABLED=false
+      - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=false
+      - LANGFUSE_INIT_ORG_ID=Assistant
+      - LANGFUSE_INIT_ORG_NAME=Assistant
+      - LANGFUSE_INIT_PROJECT_ID=ai-assistant
+      - LANGFUSE_INIT_PROJECT_NAME=AI-ASSISTANT
+      - LANGFUSE_INIT_USER_EMAIL=admin@ai.local
+      - LANGFUSE_INIT_USER_NAME=admin
+      - LANGFUSE_INIT_USER_PASSWORD=password
+      - LANGFUSE_INIT_PROJECT_PUBLIC_KEY=pk-lf-b49f2dc4-6b69-409e-adb2-b021c5921284
+      - LANGFUSE_INIT_PROJECT_SECRET_KEY=sk-lf-e3d04a3d-fc25-4fc7-bb3e-4342a1c3927d
+      - DIRECT_URL=postgresql://postgres:postgres@langfuse-db-ai:5432/postgres
+      - DATABASE_URL=postgresql://postgres:postgres@langfuse-db-ai:5432/postgres
+      - NEXTAUTH_URL=http://langfuse-server.aiassistant.orb.local:3008
+      - NEXTAUTH_SECRET=secret
+      - SALT=VFUnopBvhF0BvH9DDy+pOYLHY5mG18rIjiEotqAv49M=
+      - LANGFUSE_WORKER_PASSWORD=password
+      - ENCRYPTION_KEY=7f9cedf70a135131a836a1e00467dd146d135135305298d8144d4cd6a4190d82
+      - LANGFUSE_CSP_ENFORCE_HTTPS=false
+
+  langfuse-db-ai:
+    image: postgres
+    container_name: langfuse-news-db-ai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5438:5432"
+    volumes:
+      - database_data:/var/lib/postgresql/data
+
+volumes:
+  qdrant_data:
+  database_data:
