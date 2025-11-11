@@ -55,3 +55,4 @@ def setup_logging(config_path: Path | None = None) -> None:
 
     logging.config.dictConfig(_default_logging_dict())
 
+

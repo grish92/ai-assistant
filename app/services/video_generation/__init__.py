@@ -1,0 +1,2 @@
+"""Video generation service package."""
+

@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     WS_PING_INTERVAL: float = 20.0
     WS_PING_TIMEOUT: float = 60.0
     INGEST_HTTP_TIMEOUT: float = 60.0
+    GOOGLE_GENAI_API_KEY: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),
